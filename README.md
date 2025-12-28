@@ -58,3 +58,5 @@ The application utilizes a Nested Protection Model, frequently referred to as th
 3. Monitor the Capacity Usage Meter to ensure the payload is within safe limits.
 4. Enable Decoy Payload if multi-layer protection is desired.
 5. Select the appropriate Inject command to execute the PRNG-Scatter algorithm.
+
+<img width="1919" height="1012" alt="image" src="https://github.com/user-attachments/assets/d09a7f3d-7cfe-4dfe-bedd-4130b63e5153" />
