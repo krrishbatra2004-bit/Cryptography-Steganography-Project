@@ -16,12 +16,11 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * FINAL UI BUILD.
+ * ADVANCED UI BUILD - REFINED CAPACITY LOGIC.
  * UPDATED:
- * - Taller Passkey (Auth Key) Field for better accessibility.
- * - Significantly larger System Log window with increased font size.
- * - Improved centered layout and vertical spacing.
- * - Fully scrollable terminal logic.
+ * - Fixed Capacity Meter sync for Drag-and-Drop and File Chooser.
+ * - Implemented Float-based precision for small payload detection.
+ * - Improved vertical spacing and centered component alignment.
  */
 public class AppUI extends JFrame {
 
@@ -39,19 +38,17 @@ public class AppUI extends JFrame {
     private JButton encryptBtn, decryptBtn;
     private JButton hideImgBtn, extractImgBtn, hideAudBtn, extractAudBtn, hideVidBtn, extractVidBtn;
 
-    // Optimized Fonts for readability and impact
     private static final Font HEADER_FONT = new Font("OCR A Extended", Font.BOLD, 26);
     private static final Font LARGE_FONT = new Font("Consolas", Font.BOLD, 20);
     private static final Font MEDIUM_FONT = new Font("Consolas", Font.PLAIN, 16);
-    private static final Font TERMINAL_FONT = new Font("Lucida Console", Font.PLAIN, 14); // Increased size
+    private static final Font TERMINAL_FONT = new Font("Lucida Console", Font.PLAIN, 14);
 
     public AppUI() {
         setTitle(Config.APP_TITLE);
-        setSize(1300, 950); // Increased dimensions for larger log window
+        setSize(1300, 950);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Main Cyber-Grid Container
         JPanel mainContainer = new JPanel(new BorderLayout(0, 25)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -69,15 +66,12 @@ public class AppUI extends JFrame {
         mainContainer.setBorder(new EmptyBorder(35, 35, 35, 35));
         enableDragAndDrop(mainContainer);
 
-        // Center Split Section (Crypto | Stego)
         JPanel splitPanel = new JPanel(new GridLayout(1, 2, 40, 0));
         splitPanel.setOpaque(false);
         splitPanel.add(createCryptoPanel());
         splitPanel.add(createStegoPanel());
 
         mainContainer.add(splitPanel, BorderLayout.CENTER);
-
-        // Bottom Section: Massive Terminal Window
         mainContainer.add(createLogTerminal(), BorderLayout.SOUTH);
 
         add(mainContainer);
@@ -91,7 +85,6 @@ public class AppUI extends JFrame {
         authKeyLabel.setFont(LARGE_FONT);
         authKeyLabel.setAlignmentX(CENTER_ALIGNMENT);
 
-        // INCREASED HEIGHT: Taller Passkey Field
         passwordField = new JPasswordField();
         styleComponent(passwordField);
         passwordField.setPreferredSize(new Dimension(400, 45));
@@ -106,7 +99,6 @@ public class AppUI extends JFrame {
         encryptBtn = createNeonBtn("ENCRYPT TARGET", true);
         decryptBtn = createNeonBtn("DECRYPT TARGET", true);
 
-        // Telemetry Sub-panel (Centered)
         JPanel telemetryPanel = createEntropyTelemetryPanel();
         telemetryPanel.setAlignmentX(CENTER_ALIGNMENT);
 
@@ -168,6 +160,7 @@ public class AppUI extends JFrame {
         scroll.setBorder(BorderFactory.createLineBorder(Config.NEON_CYAN, 1));
         scroll.setMaximumSize(new Dimension(500, 150));
 
+        // Fixed Listener: Triggers calculation on every key stroke
         messageArea.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { updateCapacity(); }
             public void removeUpdate(DocumentEvent e) { updateCapacity(); }
@@ -228,7 +221,6 @@ public class AppUI extends JFrame {
                 " SECURE SYSTEM COMMAND LOG ", 0, 0, LARGE_FONT, Config.NEON_CYAN
         ));
 
-        // EXPANDED LOG: Larger rows and text
         systemLog = new JTextArea(12, 50);
         systemLog.setEditable(false);
         systemLog.setBackground(new Color(5, 5, 10));
@@ -239,7 +231,6 @@ public class AppUI extends JFrame {
         DefaultCaret caret = (DefaultCaret) systemLog.getCaret();
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
-        // Centered Scrollable Window
         JScrollPane scroll = new JScrollPane(systemLog);
         scroll.setBorder(null);
         scroll.setPreferredSize(new Dimension(1200, 250));
@@ -248,7 +239,7 @@ public class AppUI extends JFrame {
         return p;
     }
 
-    // --- LOGIC REROUTING & UTILS ---
+    // --- LOGIC REFINEMENT ---
 
     public void log(String message) {
         String ts = new SimpleDateFormat("HH:mm:ss").format(new Date());
@@ -259,6 +250,11 @@ public class AppUI extends JFrame {
 
     private void updateEntropy() {
         String pass = new String(passwordField.getPassword());
+        if (pass.isEmpty()) {
+            entropyBar.setValue(0);
+            entropyValueLabel.setText("KEY ENTROPY: 0 BITS (WEAK)");
+            return;
+        }
         int bits = (int) (pass.length() * (Math.log(pass.chars().distinct().count() + 1) / Math.log(2)));
         entropyBar.setValue(bits);
         if (bits < 40) {
@@ -276,12 +272,38 @@ public class AppUI extends JFrame {
         }
     }
 
+    /**
+     * REFINED CAPACITY LOGIC.
+     * Fixed: Now uses float precision and handles Drag-and-Drop synchronization.
+     */
     private void updateCapacity() {
-        if (droppedFile != null) {
-            int percent = Math.min(100, (int) ((messageArea.getText().length() / (double) (droppedFile.length() / 10)) * 100));
-            capacityMeter.setValue(percent);
-            capacityLabel.setText("CAPACITY USAGE: " + percent + "%");
-            capacityMeter.setForeground(percent > 80 ? Config.NEON_RED : Config.NEON_GREEN);
+        String text = messageArea.getText();
+        if (droppedFile != null && !text.isEmpty()) {
+            // LSB standard: 1 bit per carrier byte. Available capacity = file length / 8.
+            float maxChars = (float) droppedFile.length() / 8.0f;
+            float currentChars = (float) text.length();
+
+            // Calculate float percentage
+            float percent = (currentChars / maxChars) * 100.0f;
+            int displayPercent = Math.min(100, (int) Math.ceil(percent));
+
+            capacityMeter.setValue(displayPercent);
+            capacityLabel.setText("CAPACITY USAGE: " + displayPercent + "%");
+
+            if (displayPercent > 80) {
+                capacityMeter.setForeground(Config.NEON_RED);
+                capacityLabel.setForeground(Config.NEON_RED);
+            } else if (displayPercent > 50) {
+                capacityMeter.setForeground(Config.NEON_YELLOW);
+                capacityLabel.setForeground(Config.NEON_YELLOW);
+            } else {
+                capacityMeter.setForeground(Config.NEON_GREEN);
+                capacityLabel.setForeground(Config.NEON_CYAN);
+            }
+        } else {
+            capacityMeter.setValue(0);
+            capacityLabel.setText("CAPACITY USAGE: 0%");
+            capacityLabel.setForeground(Config.NEON_CYAN);
         }
     }
 
@@ -340,13 +362,29 @@ public class AppUI extends JFrame {
                 try {
                     dtde.acceptDrop(DnDConstants.ACTION_COPY);
                     List<File> files = (List<File>) dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
-                    if (!files.isEmpty()) { droppedFile = files.get(0); log("FILE LOADED: " + droppedFile.getName()); updateCapacity(); }
+                    if (!files.isEmpty()) {
+                        droppedFile = files.get(0);
+                        log("FILE LOADED: " + droppedFile.getName());
+
+                        // SYNC FIX: Explicitly update capacity upon file arrival
+                        updateCapacity();
+                    }
                 } catch (Exception e) { log("ERROR: DROP FAILED"); }
             }
         });
     }
 
-    // Getters
+    // --- GETTERS & SETTERS ---
+
+    /**
+     * Allows the controller to set the file when selected via Open Dialog,
+     * ensuring the capacity meter reflects files chosen via button.
+     */
+    public void setExternalFile(File file) {
+        this.droppedFile = file;
+        updateCapacity();
+    }
+
     public String getPassword() { return new String(passwordField.getPassword()); }
     public String getMessage() { return messageArea.getText(); }
     public File getDroppedFile() { return droppedFile; }
